@@ -1,2 +1,4 @@
-hex
+*.hex
+*.emSession
+pca10056e/s112/ses/Output/
 pca10056e/s112/ses/Output
