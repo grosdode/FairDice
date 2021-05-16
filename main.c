@@ -1,5 +1,19 @@
 #include "main.h"
 
+#include "nrf_drv_spi.h"
+
+#define SPI_INSTANCE  0 /**< SPI instance index. */
+
+#define SPI_SCK_PIN 12
+#define SPI_MISO_PIN 15
+#define SPI_MOSI_PIN 14
+#define SPI_SS_PIN 20
+
+#ifndef SPI_IRQ_PRIORITY
+#define SPI_IRQ_PRIORITY 6
+#endif
+
+const nrf_drv_spi_t spi = NRF_DRV_SPI_INSTANCE(SPI_INSTANCE);  /**< SPI instance. */
 
 BLE_LBS_DEF(m_lbs);                                                             /**< LED Button Service instance. */
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
@@ -459,6 +473,18 @@ static void idle_state_handle(void)
 }
 
 
+void spi_init(void)
+{
+    nrf_drv_spi_config_t spi_config = NRF_DRV_SPI_DEFAULT_CONFIG;
+    spi_config.ss_pin   = SPI_SS_PIN;
+    spi_config.miso_pin = SPI_MISO_PIN;
+    spi_config.mosi_pin = SPI_MOSI_PIN;
+    spi_config.sck_pin  = SPI_SCK_PIN;
+    spi_config.mode     = NRF_SPI_MODE_3;
+    spi_config.frequency = SPI_FREQUENCY_FREQUENCY_M4;
+    APP_ERROR_CHECK(nrf_drv_spi_init(&spi, &spi_config, NULL/*spi_event_handler*/, NULL));
+}
+
 /**@brief Function for application main entry.
  */
 int main(void)
@@ -485,6 +511,9 @@ int main(void)
     // Start execution.
     NRF_LOG_INFO("Fair dice started.");
     advertising_start();
+
+    spi_init();
+    ADXL343_init(&spi);
 
     // Enter main loop.
     for (;;)

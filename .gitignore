@@ -1,4 +1,4 @@
 *.hex
 *.emSession
+*.jlink
 pca10056e/s112/ses/Output/
-pca10056e/s112/ses/Output
