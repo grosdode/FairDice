@@ -1,7 +1,7 @@
 #ifndef ADXL343_H__
 #define ADXL343_H__
 
-
+#include <stdint.h>
 
 /*=========================================================================
     I2C ADDRESS/BITS
