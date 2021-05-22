@@ -207,8 +207,8 @@ uint8_t ADXL343_init(nrf_drv_spi_t const * const p_instance)
 //  ADXL343_write_single(ADXL343_REG_DUR,0);
 //  ADXL343_write_single(ADXL343_REG_LATENT,0);
 //  ADXL343_write_single(ADXL343_REG_WINDOW,0);
-  ADXL343_write_single(ADXL343_REG_THRESH_ACT,64);    // 64 * 62.5mg/LSB = 4g
-  ADXL343_write_single(ADXL343_REG_THRESH_INACT,24);  // 64 * 62.5mg/LSB = 1.5g
+  ADXL343_write_single(ADXL343_REG_THRESH_ACT,24);    // 64 * 62.5mg/LSB = 4g
+  ADXL343_write_single(ADXL343_REG_THRESH_INACT,20);  // 64 * 62.5mg/LSB = 1.25g
   ADXL343_write_single(ADXL343_REG_TIME_INACT,1);     // 1 * 1sec. = 1sec
   ADXL343_write_single(ADXL343_REG_ACT_INACT_CTL,0b01110111); // dc all axis
 //  ADXL343_write_single(ADXL343_REG_THRESH_FF,0);
@@ -223,14 +223,17 @@ uint8_t ADXL343_init(nrf_drv_spi_t const * const p_instance)
   ADXL343_write_single(ADXL343_REG_POWER_CTL, ADXL343_BIT_LINK
                                              |ADXL343_BIT_MEASURE
                                              |ADXL343_BIT_AUTOSLEEP
+                                             |ADXL343_BIT_SLEEP
                                              |ADXL343_WAKEUP_8_HZ);
   ADXL343_write_single(ADXL343_REG_INT_ENABLE,ADXL343_BIT_ACTIVITY_EN|ADXL343_BIT_INACTIVITY_EN); // Interrupt sources
 
-
-  // read test data
+   // read test data
   int16_t testData[3] = {0,0,0};
   ADXL343_getXYZValues(testData);
   
+  uint8_t read_interrupts;
+  ADXL343_read_single(ADXL343_REG_INT_SOURCE, &read_interrupts);
+
   return 0;
 }
 
@@ -306,6 +309,26 @@ void ADXL343_getAxisValues(int16_t *data, e_acc_axis axis)
 
   /* 8bit to 16bit */
   data[0] = (raw_data[2] << 8) | raw_data[1];
+}
+
+
+void ADXL343_dump_all_registers()
+{
+  uint8_t data[29];
+  ADXL343_read_single(ADXL343_REG_DEVID,data);
+  NRF_LOG_INFO("Register 0: %d",data[0]);
+
+  if(ADXL343_read_multi(ADXL343_REG_THRESH_TAP, data, 29))
+  {
+    NRF_LOG_ERROR("Fail while ADXL343_read_multi");
+  }
+  else
+  {
+    for(uint8_t i = 0; i < 29; i++)
+    {
+      NRF_LOG_INFO("Register %d: %d",29+i,data[i]);
+    }
+  }
 }
 
 /***************************************************************************//**
