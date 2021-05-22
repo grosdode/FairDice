@@ -20,6 +20,8 @@
 #include "nrf_ble_gatt.h"
 #include "nrf_ble_qwr.h"
 #include "nrf_pwr_mgmt.h"
+#include "nrfx_gpiote.h"
+#include "nrf_drv_rng.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -50,5 +52,8 @@
 #define BUTTON_DETECTION_DELAY          APP_TIMER_TICKS(50)                     /**< Delay from a GPIOTE event until a button is reported as pushed (in number of timer ticks). */
 
 #define DEAD_BEEF                       0xDEADBEEF                              /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
+
+#define PIN_AC_INT1 16  // Accelerometer interrupt 1
+#define PIN_AC_INT2 18  // Accelerometer interrupt 2
 
 #endif // MAIN_H__

@@ -485,6 +485,58 @@ void spi_init(void)
     APP_ERROR_CHECK(nrf_drv_spi_init(&spi, &spi_config, NULL/*spi_event_handler*/, NULL));
 }
 
+#define PIN_OUT 4
+
+void in_pin_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
+{
+    nrfx_gpiote_out_toggle(PIN_OUT);
+    uint8_t data;
+    ADXL343_read_single(ADXL343_REG_INT_SOURCE, &data);
+    NRF_LOG_INFO("Interrupt: %d",data);
+}
+/**
+ * @brief Function for configuring: PIN_IN pin for input, PIN_OUT pin for output,
+ * and configures GPIOTE to give an interrupt on pin change.
+ */
+static void gpio_int_init(void)
+{
+    ret_code_t err_code;
+
+    err_code = nrfx_gpiote_init();
+    APP_ERROR_CHECK(err_code);
+
+    nrfx_gpiote_out_config_t out_config = NRFX_GPIOTE_CONFIG_OUT_SIMPLE(false);
+
+    err_code = nrfx_gpiote_out_init(PIN_OUT, &out_config);
+    APP_ERROR_CHECK(err_code);
+
+    nrfx_gpiote_in_config_t in_config = NRFX_GPIOTE_CONFIG_IN_SENSE_LOTOHI(true);
+    in_config.pull = NRF_GPIO_PIN_PULLUP;
+
+    err_code = nrfx_gpiote_in_init(PIN_AC_INT1, &in_config, in_pin_handler);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = nrfx_gpiote_in_init(PIN_AC_INT2, &in_config, in_pin_handler);
+    APP_ERROR_CHECK(err_code);
+
+    nrfx_gpiote_in_event_enable(PIN_AC_INT1, true);
+    nrfx_gpiote_in_event_enable(PIN_AC_INT2, true);
+}
+
+uint8_t get_random_number()
+{
+  uint8_t p_buff=0;
+  nrf_drv_rng_block_rand(&p_buff,1);
+  return p_buff;
+}
+
+void init_random_number()
+{
+  uint32_t err_code;
+  err_code = nrf_drv_rng_init(NULL);
+  APP_ERROR_CHECK(err_code);
+}
+
 /**@brief Function for application main entry.
  */
 int main(void)
@@ -514,6 +566,13 @@ int main(void)
 
     spi_init();
     ADXL343_init(&spi);
+    gpio_int_init();
+
+    init_random_number();
+    for(uint8_t i = 0; i < 10; i++)
+    {
+      NRF_LOG_INFO("Random number %d: %d",i,get_random_number()%6+1);
+    }
 
     // Enter main loop.
     for (;;)
