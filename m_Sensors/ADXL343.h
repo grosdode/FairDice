@@ -3,6 +3,7 @@
 
 #include "nrf_drv_spi.h"
 #include "nrf_delay.h"
+#include "nrf_log.h"
 #include <sdk_errors.h>
 #include <stdlib.h>
 
@@ -149,5 +150,11 @@ typedef enum {
 
 uint8_t ADXL343_init(nrf_drv_spi_t const * const p_instance);
 void ADXL343_getXYZValues(int16_t *data);
+void ADXL343_write_single(uint8_t startAddress, uint8_t value);
+uint8_t ADXL343_write_multi(uint8_t startAddress, uint8_t *data, uint8_t length);
+void ADXL343_read_single(uint8_t startAddress, uint8_t *data);
+uint8_t ADXL343_read_multi(uint8_t startAddress, uint8_t *data, uint8_t length);
+void ADXL343_dump_all_registers();
+
 
 #endif // ADXL343_H__
