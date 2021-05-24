@@ -1,19 +1,19 @@
 #include "main.h"
 
-#include "nrf_drv_spi.h"
+/* SPI instance. */
+const nrf_drv_spi_t spi = NRF_DRV_SPI_INSTANCE(SPI_INSTANCE);
 
-#define SPI_INSTANCE  0 /**< SPI instance index. */
+/* Indicates if operation on TWI has ended. */
+volatile bool m_xfer_done = false;
 
-#define SPI_SCK_PIN 12
-#define SPI_MISO_PIN 15
-#define SPI_MOSI_PIN 14
-#define SPI_SS_PIN 20
+/* TWI instance. */
+const nrf_drv_twi_t twi = NRF_DRV_TWI_INSTANCE(TWI_INSTANCE_ID);
 
-#ifndef SPI_IRQ_PRIORITY
-#define SPI_IRQ_PRIORITY 6
-#endif
+static uint8_t LowerRange = 1;
+static uint8_t UpperRange = 6;
 
-const nrf_drv_spi_t spi = NRF_DRV_SPI_INSTANCE(SPI_INSTANCE);  /**< SPI instance. */
+
+ 
 
 BLE_LBS_DEF(m_lbs);                                                             /**< LED Button Service instance. */
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
@@ -286,8 +286,6 @@ static void advertising_start(void)
 
     err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
     APP_ERROR_CHECK(err_code);
-
-//    bsp_board_led_on(ADVERTISING_LED);
 }
 
 
@@ -392,55 +390,6 @@ static void ble_stack_init(void)
     NRF_SDH_BLE_OBSERVER(m_ble_observer, APP_BLE_OBSERVER_PRIO, ble_evt_handler, NULL);
 }
 
-
-/**@brief Function for handling events from the button handler module.
- *
- * @param[in] pin_no        The pin that the event applies to.
- * @param[in] button_action The button action (press/release).
- */
-//static void button_event_handler(uint8_t pin_no, uint8_t button_action)
-//{
-//    ret_code_t err_code;
-//
-//    switch (pin_no)
-//    {
-//        case LEDBUTTON_BUTTON:
-//            NRF_LOG_INFO("Send button state change.");
-//            err_code = ble_lbs_on_button_change(m_conn_handle, &m_lbs, button_action);
-//            if (err_code != NRF_SUCCESS &&
-//                err_code != BLE_ERROR_INVALID_CONN_HANDLE &&
-//                err_code != NRF_ERROR_INVALID_STATE &&
-//                err_code != BLE_ERROR_GATTS_SYS_ATTR_MISSING)
-//            {
-//                APP_ERROR_CHECK(err_code);
-//            }
-//            break;
-//
-//        default:
-//            APP_ERROR_HANDLER(pin_no);
-//            break;
-//    }
-//}
-
-
-/**@brief Function for initializing the button handler module.
- */
-//static void buttons_init(void)
-//{
-//    ret_code_t err_code;
-//
-//    //The array must be static because a pointer to it will be saved in the button handler module.
-//    static app_button_cfg_t buttons[] =
-//    {
-//        {LEDBUTTON_BUTTON, false, BUTTON_PULL, button_event_handler}
-//    };
-//
-//    err_code = app_button_init(buttons, ARRAY_SIZE(buttons),
-//                               BUTTON_DETECTION_DELAY);
-//    APP_ERROR_CHECK(err_code);
-//}
-
-
 static void log_init(void)
 {
     ret_code_t err_code = NRF_LOG_INIT(NULL);
@@ -482,45 +431,7 @@ void spi_init(void)
     spi_config.sck_pin  = SPI_SCK_PIN;
     spi_config.mode     = NRF_SPI_MODE_3;
     spi_config.frequency = SPI_FREQUENCY_FREQUENCY_M4;
-    APP_ERROR_CHECK(nrf_drv_spi_init(&spi, &spi_config, NULL/*spi_event_handler*/, NULL));
-}
-
-#define PIN_OUT 4
-
-void in_pin_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
-{
-    nrfx_gpiote_out_toggle(PIN_OUT);
-    uint8_t data;
-    ADXL343_read_single(ADXL343_REG_INT_SOURCE, &data);
-    NRF_LOG_INFO("Interrupt: %d",data);
-}
-/**
- * @brief Function for configuring: PIN_IN pin for input, PIN_OUT pin for output,
- * and configures GPIOTE to give an interrupt on pin change.
- */
-static void gpio_int_init(void)
-{
-    ret_code_t err_code;
-
-    err_code = nrfx_gpiote_init();
-    APP_ERROR_CHECK(err_code);
-
-    nrfx_gpiote_out_config_t out_config = NRFX_GPIOTE_CONFIG_OUT_SIMPLE(false);
-
-    err_code = nrfx_gpiote_out_init(PIN_OUT, &out_config);
-    APP_ERROR_CHECK(err_code);
-
-    nrfx_gpiote_in_config_t in_config = NRFX_GPIOTE_CONFIG_IN_SENSE_LOTOHI(true);
-    in_config.pull = NRF_GPIO_PIN_PULLUP;
-
-    err_code = nrfx_gpiote_in_init(PIN_AC_INT1, &in_config, in_pin_handler);
-    APP_ERROR_CHECK(err_code);
-
-    err_code = nrfx_gpiote_in_init(PIN_AC_INT2, &in_config, in_pin_handler);
-    APP_ERROR_CHECK(err_code);
-
-    nrfx_gpiote_in_event_enable(PIN_AC_INT1, true);
-    nrfx_gpiote_in_event_enable(PIN_AC_INT2, true);
+    APP_ERROR_CHECK(nrf_drv_spi_init(&spi, &spi_config, NULL, NULL));
 }
 
 uint8_t get_random_number()
@@ -537,42 +448,116 @@ void init_random_number()
   APP_ERROR_CHECK(err_code);
 }
 
+void in_pin_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
+{
+  uint8_t data;
+  ADXL343_read_single(ADXL343_REG_INT_SOURCE, &data);
+
+  union ADXL343_int_bitfield intterups;
+  intterups.value = data;
+
+  if(intterups.bits.activity)
+  {
+    IS31FL3731_start_autoplay(TWI_IS31FL3731_IC1_ADDR);
+    IS31FL3731_sw_shutdown(TWI_IS31FL3731_IC1_ADDR, 0);
+    NRF_LOG_INFO("Activity interrupt");
+  }
+  if(intterups.bits.inactivity)
+  {
+    uint8_t myrn = get_random_number();
+    myrn = (uint8_t)(LowerRange + ((UpperRange - LowerRange) / 255.0) * myrn+0.5);
+    NRF_LOG_INFO("The number is: %d", myrn);
+
+    IS31FL3731_show_number(TWI_IS31FL3731_IC1_ADDR, myrn, 0);
+    
+    nrf_delay_ms(3000);
+    IS31FL3731_sw_shutdown(TWI_IS31FL3731_IC1_ADDR, 1);
+    NRF_LOG_INFO("Inactivity interrupt");
+  }
+}
+/**
+ * @brief Function for configuring: PIN_IN pin for input, PIN_OUT pin for output,
+ * and configures GPIOTE to give an interrupt on pin change.
+ */
+static void gpio_int_init(void)
+{
+    ret_code_t err_code;
+
+    err_code = nrfx_gpiote_init();
+    APP_ERROR_CHECK(err_code);
+
+    nrfx_gpiote_in_config_t in_config = NRFX_GPIOTE_CONFIG_IN_SENSE_LOTOHI(true);
+    in_config.pull = NRF_GPIO_PIN_PULLUP;
+
+    err_code = nrfx_gpiote_in_init(PIN_AC_INT1, &in_config, in_pin_handler);
+    APP_ERROR_CHECK(err_code);
+
+    err_code = nrfx_gpiote_in_init(PIN_AC_INT2, &in_config, in_pin_handler);
+    APP_ERROR_CHECK(err_code);
+
+    nrfx_gpiote_in_event_enable(PIN_AC_INT1, true);
+    nrfx_gpiote_in_event_enable(PIN_AC_INT2, true);
+}
+
+
+/**
+ * @brief UART initialization.
+ */
+void twi_init (void)
+{
+    ret_code_t err_code;
+
+    const nrf_drv_twi_config_t twi_config = {
+       .scl                = TWI_SCL_PIN,
+       .sda                = TWI_SDA_PIN,
+       .frequency          = NRF_DRV_TWI_FREQ_400K,
+       .interrupt_priority = APP_IRQ_PRIORITY_HIGH,
+       .clear_bus_init     = false
+    };
+
+    err_code = nrf_drv_twi_init(&twi, &twi_config, NULL, NULL);
+    APP_ERROR_CHECK(err_code);
+
+    nrf_drv_twi_enable(&twi);
+}
+
+
 /**@brief Function for application main entry.
  */
 int main(void)
 {
-    // Initialize.
-    log_init();
-    timers_init();
-    power_management_init();
-    ble_stack_init();
-    gap_params_init();
-    gatt_init();
-    services_init();
-    advertising_init();
-    conn_params_init();
-
     NRF_LOG_INFO("PE as output");
     nrf_gpio_cfg_output(6);
     NRF_LOG_INFO("PE output active");
     nrf_gpio_pin_write(6,1);
-    NRF_LOG_INFO("PE output deactivated");
-    nrf_gpio_pin_write(6,0);
 
+    // Initialize.
+    log_init();
+    timers_init();
+    power_management_init();
+//    ble_stack_init();
+//    gap_params_init();
+//    gatt_init();
+//    services_init();
+//    advertising_init();
+//    conn_params_init();
 
     // Start execution.
     NRF_LOG_INFO("Fair dice started.");
-    advertising_start();
+//    advertising_start();
 
     spi_init();
     ADXL343_init(&spi);
     gpio_int_init();
-
+    twi_init();
     init_random_number();
-    for(uint8_t i = 0; i < 10; i++)
-    {
-      NRF_LOG_INFO("Random number %d: %d",i,get_random_number()%6+1);
-    }
+//    for(uint8_t i = 0; i < 10; i++)
+//    {
+//      NRF_LOG_INFO("Random number %d: %d",i,get_random_number()%6+1);
+//    }
+    
+    nrf_delay_ms(1);
+    IS31FL3731_init(&twi, TWI_IS31FL3731_IC1_ADDR);
 
     // Enter main loop.
     for (;;)

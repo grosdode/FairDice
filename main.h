@@ -28,7 +28,28 @@
 #include "nrf_log_default_backends.h"
 
 #include "ADXL343.h"
+#include "IS31FL3731.h"
 
+#include "nrf_drv_spi.h"
+#include "nrf_drv_twi.h"
+
+/* SPI instance index. */
+#define SPI_INSTANCE  0 
+
+#define SPI_SCK_PIN 12
+#define SPI_MISO_PIN 15
+#define SPI_MOSI_PIN 14
+#define SPI_SS_PIN 20
+
+#ifndef SPI_IRQ_PRIORITY
+#define SPI_IRQ_PRIORITY 6
+#endif
+
+/* TWI instance ID. */
+#define TWI_INSTANCE_ID         0
+#define TWI_SCL_PIN             4
+#define TWI_SDA_PIN             1
+#define TWI_IS31FL3731_IC1_ADDR 0b1110100
 
 
 #define DEVICE_NAME                     "Fair_Dice"                         /**< Name of device. Will be included in the advertising data. */
