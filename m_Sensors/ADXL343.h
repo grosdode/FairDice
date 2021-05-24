@@ -123,7 +123,7 @@ typedef enum {
 } range_t;
 
 /** Possible interrupts sources on the ADXL343. */
-union int_config {
+union ADXL343_int_bitfield {
   uint8_t value; // Composite 8-bit value of the bitfield.
   struct {
     uint8_t overrun    : 1; // Bit 0

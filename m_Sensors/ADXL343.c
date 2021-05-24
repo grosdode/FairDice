@@ -207,9 +207,9 @@ uint8_t ADXL343_init(nrf_drv_spi_t const * const p_instance)
 //  ADXL343_write_single(ADXL343_REG_DUR,0);
 //  ADXL343_write_single(ADXL343_REG_LATENT,0);
 //  ADXL343_write_single(ADXL343_REG_WINDOW,0);
-  ADXL343_write_single(ADXL343_REG_THRESH_ACT,24);    // 64 * 62.5mg/LSB = 4g
-  ADXL343_write_single(ADXL343_REG_THRESH_INACT,20);  // 64 * 62.5mg/LSB = 1.25g
-  ADXL343_write_single(ADXL343_REG_TIME_INACT,1);     // 1 * 1sec. = 1sec
+  ADXL343_write_single(ADXL343_REG_THRESH_ACT,18);    // 24 * 62.5mg/LSB = 1.5g
+  ADXL343_write_single(ADXL343_REG_THRESH_INACT,18);  // 20 * 62.5mg/LSB = 1.25g
+  ADXL343_write_single(ADXL343_REG_TIME_INACT,2);     // 1 * 1sec. = 1sec
   ADXL343_write_single(ADXL343_REG_ACT_INACT_CTL,0b01110111); // dc all axis
 //  ADXL343_write_single(ADXL343_REG_THRESH_FF,0);
 //  ADXL343_write_single(ADXL343_REG_TIME_FF,0);
